@@ -1,0 +1,24 @@
+/* Основной акцентный цвет (Красный из твоего бара) */
+@define-color accent_color #9b0715;
+@define-color accent_bg_color #9b0715;
+@define-color accent_fg_color #ffffff;
+
+/* Фон окон и основной текст */
+@define-color window_bg_color #202020;
+@define-color window_fg_color #a0a0a0;
+
+/* Шапки окон (Headerbars) */
+@define-color headerbar_bg_color #202020;
+@define-color headerbar_fg_color #a0a0a0;
+
+/* Фон списков, полей ввода и текстовых областей */
+@define-color view_bg_color #161616; 
+@define-color view_fg_color #a0a0a0;
+
+/* Всплывающие меню (как твой popupBgColor) */
+@define-color popover_bg_color #1a1a1a;
+@define-color popover_fg_color #a0a0a0;
+
+/* Диалоговые окна */
+@define-color dialog_bg_color #202020;
+@define-color dialog_fg_color #a0a0a0;
