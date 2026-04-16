@@ -1,0 +1,226 @@
+{
+  "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/master/doc/json_schema.json",
+  "logo": {
+    "type": "kitty",
+    "source": "~/Pictures/bubufix2.png",
+    "width": 40,
+    "padding": {
+        "top": 0,          // Top padding
+        "left": 0,         // Left padding
+        "right": 0       // Right padding
+    },
+    "height": 14
+  },
+  "display": {
+    "stat": false,
+    "pipe": false,
+    "showErrors": false,
+    "disableLinewrap": true,
+    "hideCursor": false,
+    "separator": ": ",
+    "color": {
+      "keys": "#9b0715",
+      "title": "#9b0715",
+      "output": "",
+      "separator": ""
+    },
+    "brightColor": true,
+    "duration": {
+      "abbreviation": false,
+      "spaceBeforeUnit": "default"
+    },
+    "size": {
+      "maxPrefix": "YB",
+      "binaryPrefix": "iec",
+      "ndigits": 2,
+      "spaceBeforeUnit": "default"
+    },
+    "temp": {
+      "unit": "D",
+      "ndigits": 1,
+      "color": {
+        "green": "32",
+        "yellow": "93",
+        "red": "91"
+      },
+      "spaceBeforeUnit": "default"
+    },
+    "percent": {
+      "type": [
+        "num",
+        "num-color"
+      ],
+      "ndigits": 0,
+      "color": {
+        "green": "32",
+        "yellow": "93",
+        "red": "91"
+      },
+      "spaceBeforeUnit": "default",
+      "width": 0
+    },
+    "bar": {
+      "char": {
+        "elapsed": "■",
+        "total": "-"
+      },
+      "border": {
+        "left": "[ ",
+        "right": " ]",
+        "leftElapsed": "",
+        "rightElapsed": ""
+      },
+      "color": {
+        "elapsed": "auto",
+        "total": "97",
+        "border": "97"
+      },
+      "width": 10
+    },
+    "fraction": {
+      "ndigits": 2
+    },
+    "noBuffer": false,
+    "key": {
+      "width": 0,
+      "type": "string",
+      "paddingLeft": 0
+    },
+    "freq": {
+      "ndigits": 2,
+      "spaceBeforeUnit": "default"
+    },
+    "constants": []
+  },
+  "general": {
+    "thread": true,
+    "processingTimeout": 5000,
+    "detectVersion": true,
+    "playerName": "",
+    "dsForceDrm": false
+  },
+  "modules": [
+    {
+      "type": "title",
+      "key": " ",
+      "keyIcon": "",
+      "fqdn": false,
+      "color": {
+        "user": "",
+        "at": "",
+        "host": ""
+      }
+    },
+    {
+      "type": "separator",
+      "string": "-",
+      "outputColor": "",
+      "times": 0
+    },
+    {
+      "type": "os",
+      "keyIcon": ""
+    },
+    {
+      "type": "host",
+      "keyIcon": "󰌢"
+    },
+    {
+      "type": "kernel",
+      "keyIcon": ""
+    },
+    {
+      "type": "uptime",
+      "keyIcon": ""
+    },
+    {
+      "type": "packages",
+      "keyIcon": "󰏖",
+      "disabled": [
+        "apk"
+      ],
+      "combined": false
+    },
+    {
+      "type": "shell",
+      "keyIcon": ""
+    },
+    {
+      "type": "display",
+      "keyIcon": "󰍹",
+      "compactType": "none",
+      "preciseRefreshRate": false,
+      "order": null
+    },
+    {
+      "type": "de",
+      "keyIcon": ""
+    },
+    {
+      "type": "wm",
+      "keyIcon": "",
+      "detectPlugin": true
+    },
+    {
+      "type": "terminal",
+      "keyIcon": ""
+    },
+    {
+      "type": "cpu",
+      "keyIcon": "",
+      "temp": false,
+      "showPeCoreCount": false
+    },
+    {
+      "type": "gpu",
+      "keyIcon": "󰾲",
+      "driverSpecific": false,
+      "detectionMethod": "pci",
+      "temp": false,
+      "hideType": "none",
+      "percent": {
+        "green": 50,
+        "yellow": 80,
+        "type": 0
+      }
+    },
+    {
+      "type": "memory",
+      "keyIcon": "",
+      "percent": {
+        "green": 50,
+        "yellow": 80,
+        "type": 0
+      }
+    },
+    {
+      "type": "swap",
+      "percent": {
+        "green": 50,
+        "yellow": 80,
+        "type": 0
+      },
+      "keyIcon": "󰓡",
+      "separate": false
+    },
+    {
+      "type": "disk",
+      "keyIcon": "",
+      "showRegular": true,
+      "showExternal": true,
+      "showHidden": false,
+      "showSubvolumes": false,
+      "showReadOnly": true,
+      "showUnknown": false,
+      "folders": "",
+      "hideFolders": "/efi:/boot:/boot/*",
+      "hideFS": "",
+      "useAvailable": false,
+      "percent": {
+        "green": 50,
+        "yellow": 80,
+        "type": 0
+      }
+    }
+  ]
+}
