@@ -733,7 +733,7 @@ ShellRoot {
 
                     Text { 
                         text: batteryWidget.status === "Charging" ? "⚡" : "󰁹"
-                        color: batteryWidget.status === "Charging" ? cfg.textColor : (batteryWidget.capacity <= 20 ? cfg.accentColor : cfg.textColor)
+                        color: cfg.accentColor 
                         font.pixelSize: 18
                         Layout.alignment: Qt.AlignHCenter 
                         Layout.bottomMargin: 0
@@ -753,8 +753,20 @@ ShellRoot {
                                 Rectangle {
                                     width: 14
                                     height: 3
-                                    // Заполняем снизу вверх в зависимости от %
-                                    color: cfg.accentColor 
+                                    
+                                    color: {
+                                        let activeBlocks = Math.round((batteryWidget.capacity / 100.0) * 8)
+                                        if (index >= 8 - activeBlocks) {
+                                            if (batteryWidget.status === "Charging") {
+                                                return cfg.accentColor
+                                            }
+                                            if (batteryWidget.capacity <= 20) {
+                                                return cfg.accentColor
+                                            }
+                                            return cfg.accentColor
+                                        }
+                                        return cfg.inactiveColor
+                                    }
                                 }
                             }
                         }
