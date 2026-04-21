@@ -355,7 +355,9 @@ ShellRoot {
                     id: workspacesLayout
                     spacing: 8
                     Layout.alignment: Qt.AlignHCenter
+                    
                     property var workspaces: []
+                    property int activeWorkspaceId: -1 // Сохраняем ID активного воркспейса для окон
 
                     function updateWorkspaces(wArray) {
                         wArray.sort((a, b) => {
@@ -372,6 +374,7 @@ ShellRoot {
                             if (i < wArray.length) {
                                 let w = wArray[i]
                                 w.exists = true 
+                                if (w.is_focused) activeWorkspaceId = w.id
                                 arr.push(w)
                             } else {
                                 arr.push({ name: (i + 1).toString(), is_focused: false, exists: false, id: -1 })
@@ -405,6 +408,7 @@ ShellRoot {
                                     if (event.WorkspacesChanged) {
                                         workspacesLayout.updateWorkspaces(event.WorkspacesChanged.workspaces)
                                     } else if (event.WorkspaceActivated) {
+                                        workspacesLayout.activeWorkspaceId = event.WorkspaceActivated.id
                                         let w = workspacesLayout.workspaces
                                         for (let i = 0; i < w.length; i++) {
                                             if (w[i].id !== -1) {
@@ -412,6 +416,12 @@ ShellRoot {
                                             }
                                         }
                                         workspacesLayout.workspaces = Array.from(w)
+                                    }
+                                    
+                                    // --- ОБНОВЛЕНИЕ ОКОН ПРИ ИЗМЕНЕНИЯХ ---
+                                    if (event.WindowOpened || event.WindowClosed || event.WindowFocusChanged || event.WorkspaceActivated || event.WorkspaceActiveWindowChanged) {
+                                        windowsProcess.running = false
+                                        windowsProcess.running = true
                                     }
                                 } catch(e) {}
                             }
@@ -468,8 +478,206 @@ ShellRoot {
                     }
                 }
 
-                Item { 
-                    Layout.fillHeight: true 
+                // --- СЕПАРАТОР 1.5 (Отделяет воркспейсы от списка окон) ---
+                Column {
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.topMargin: 4
+                    Layout.bottomMargin: 4
+                    spacing: 0
+                    
+                    Rectangle { 
+                        width: cfg.barWidth - 12
+                        height: 2
+                        color: cfg.sepColor 
+                    }
+                    Rectangle { 
+                        width: cfg.barWidth - 12
+                        height: 1
+                        color: cfg.sepLightColor 
+                    }
+                }
+
+                // --- ОТКРЫТЫЕ ОКНА (Новый виджет в виде скроллящегося ListView) ---
+                ListView {
+                    id: windowsLayout
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.preferredWidth: cfg.barWidth
+                    Layout.fillHeight: true // Забирает всё свободное место (работает вместо распорки)
+                    spacing: 8
+                    clip: true // Важно! Обрезает контент при прокрутке, чтобы не залезал на другие виджеты
+                    boundsBehavior: Flickable.StopAtBounds // Убирает "пружинящий" эффект
+                    
+                    property var allWindows: []
+                    
+                    // Фильтруем по воркспейсу, сортируем и ГРУППИРУЕМ по названию приложения
+                    property var groupedWindowsArray: {
+                        let activeWs = workspacesLayout.activeWorkspaceId
+                        let filtered = allWindows.filter(w => w.workspace_id === activeWs)
+                        filtered.sort((a, b) => a.id - b.id)
+
+                        let groups = []
+                        for (let i = 0; i < filtered.length; i++) {
+                            let w = filtered[i]
+                            
+                            let name = w.app_id ? w.app_id : (w.title ? w.title : "APP")
+                            let parts = name.split('.')
+                            let shortName = parts[parts.length - 1].toUpperCase()
+
+                            // Кастомные замены
+                            if (shortName.includes("KITTY") || shortName.includes("ALACRITTY") || shortName.includes("FOOT")) shortName = "TERM"
+                            else if (shortName.includes("FIREFOX")) shortName = "FFOX"
+                            else if (shortName.includes("CHROME") || shortName.includes("BRAVE")) shortName = "WEB"
+                            else if (shortName.includes("TELEGRAM")) shortName = "TG"
+                            else if (shortName.includes("DISCORD")) shortName = "DSCD"
+                            else if (shortName.includes("DOLPHIN") || shortName.includes("NEMO")) shortName = "FILE"
+                            else if (shortName.includes("CODE")) shortName = "CODE"
+                            else shortName = shortName.replace(/[-_]/g, '').substring(0, 5)
+
+                            // Ищем, есть ли уже такая группа
+                            let existingGroup = groups.find(g => g.appNameRaw === shortName)
+                            if (existingGroup) {
+                                existingGroup.windows.push(w)
+                                if (w.is_focused) {
+                                    existingGroup.isFocused = true
+                                }
+                            } else {
+                                // Создаем новую группу
+                                groups.push({
+                                    appNameRaw: shortName,
+                                    appName: shortName.split('').join('\n'), // Вертикальный текст
+                                    windows: [w],
+                                    isFocused: w.is_focused
+                                })
+                            }
+                        }
+                        return groups
+                    }
+
+                    model: groupedWindowsArray
+
+                    Process {
+                        id: windowsProcess
+                        command: ["niri", "msg", "-j", "windows"]
+                        running: true
+                        stdout: SplitParser {
+                            onRead: data => {
+                                try {
+                                    let wins = JSON.parse(data)
+                                    windowsLayout.allWindows = wins
+                                } catch(e) {}
+                            }
+                        }
+                    }
+
+                    Process {
+                        id: winClickProc
+                        running: false
+                    }
+
+                    delegate: Item {
+                        width: ListView.view.width
+                        
+                        // Высота зависит от контента (текста или точек, смотря что длиннее)
+                        height: contentRow.height + 16
+
+                        property bool isFocused: modelData.isFocused
+                        property string appName: modelData.appName
+                        property color itemColor: isFocused ? cfg.accentColor : cfg.textColor
+
+                        // Горизонтальный ряд для расположения [Скобка] - [Текст] - [Точки]
+                        Row {
+                            id: contentRow
+                            anchors.centerIn: parent
+                            spacing: 6
+                            height: Math.max(appNameText.implicitHeight, dotsColumn.implicitHeight)
+
+                            // 1. Выемка/скобка `[` слева от текста
+                            Item {
+                                width: 4
+                                height: appNameText.implicitHeight + 4 // Привязка скобки строго к высоте текста
+                                anchors.verticalCenter: parent.verticalCenter
+
+                                Rectangle { 
+                                    width: parent.width; height: 1; color: itemColor
+                                    anchors.left: parent.left; anchors.top: parent.top 
+                                    Behavior on color { ColorAnimation { duration: 150 } }
+                                }
+                                Rectangle { 
+                                    width: 1; height: parent.height; color: itemColor
+                                    anchors.left: parent.left; anchors.top: parent.top 
+                                    Behavior on color { ColorAnimation { duration: 150 } }
+                                }
+                                Rectangle { 
+                                    width: parent.width; height: 1; color: itemColor
+                                    anchors.left: parent.left; anchors.bottom: parent.bottom 
+                                    Behavior on color { ColorAnimation { duration: 150 } }
+                                }
+                            }
+
+                            // 2. Текст по центру (вертикально)
+                            Text {
+                                id: appNameText
+                                text: appName
+                                color: itemColor
+                                font.pixelSize: 11
+                                font.bold: true
+                                font.family: "monospace"
+                                horizontalAlignment: Text.AlignHCenter
+                                lineHeight: 0.9 
+                                anchors.verticalCenter: parent.verticalCenter
+                                
+                                Behavior on color { ColorAnimation { duration: 150 } }
+                            }
+
+                            // 3. Точки справа (по одной на каждое окно)
+                            Column {
+                                id: dotsColumn
+                                anchors.verticalCenter: parent.verticalCenter
+                                spacing: 4
+
+                                Repeater {
+                                    model: modelData.windows
+                                    delegate: Rectangle {
+                                        width: 3
+                                        height: 3
+                                        // Если окно в фокусе — красная, иначе тускло-серая
+                                        color: modelData.is_focused ? cfg.accentColor : cfg.inactiveColor
+                                        
+                                        Behavior on color { ColorAnimation { duration: 150 } }
+
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            anchors.margins: -4 // Удобная зона для клика по мелкой точке
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                winClickProc.command = ["niri", "msg", "action", "focus-window", "--id", modelData.id.toString()]
+                                                winClickProc.running = true
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Общий клик по названию/скобке
+                        MouseArea {
+                            anchors.fill: parent
+                            z: -1 // Чтобы не перекрывать клики по отдельным точкам
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                // Ищем активное окно, если нет - берем первое
+                                let targetId = modelData.windows[0].id
+                                for (let i = 0; i < modelData.windows.length; i++) {
+                                    if (modelData.windows[i].is_focused) {
+                                        targetId = modelData.windows[i].id
+                                        break
+                                    }
+                                }
+                                winClickProc.command = ["niri", "msg", "action", "focus-window", "--id", targetId.toString()]
+                                winClickProc.running = true
+                            }
+                        }
+                    }
                 }
 
                 // --- СЕПАРАТОР 2 ---
