@@ -325,11 +325,31 @@ ShellRoot {
                 anchors.bottomMargin: 8
                 spacing: 10
 
-                Text {
-                    text: "󰣇"
-                    font.pixelSize: 26
+                // --- ЛОГО / КНОПКА ПИТАНИЯ ---
+                Item {
+                    id: archLogoContainer
                     Layout.alignment: Qt.AlignHCenter
-                    color: cfg.existingColor
+                    Layout.preferredWidth: cfg.barWidth
+                    Layout.preferredHeight: 36
+                    
+                    Text {
+                        text: "󰣇"
+                        font.pixelSize: 26
+                        anchors.centerIn: parent
+                        color: archMouseArea.containsMouse ? cfg.accentColor : cfg.existingColor
+                        Behavior on color { ColorAnimation { duration: 150 } }
+                    }
+
+                    MouseArea {
+                        id: archMouseArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            if (Date.now() - powerPopup.lastCloseTime < 150) return
+                            powerPopup.visible = !powerPopup.visible
+                        }
+                    }
                 }
 
                 // --- СЕПАРАТОР 1 ---
@@ -603,7 +623,7 @@ ShellRoot {
                                     Behavior on color { ColorAnimation { duration: 150 } }
                                 }
                                 Rectangle { 
-                                    width: 1; height: parent.height; color: itemColor
+                                    width: 3; height: parent.height; color: itemColor
                                     anchors.left: parent.left; anchors.top: parent.top 
                                     Behavior on color { ColorAnimation { duration: 150 } }
                                 }
@@ -638,10 +658,10 @@ ShellRoot {
                                 Repeater {
                                     model: modelData.windows
                                     delegate: Rectangle {
-                                        width: 3
-                                        height: 3
+                                        width: 4
+                                        height: 4
                                         // Если окно в фокусе — красная, иначе тускло-серая
-                                        color: modelData.is_focused ? cfg.accentColor : cfg.inactiveColor
+                                        color: modelData.is_focused ? cfg.accentColor : cfg.existingColor
                                         
                                         Behavior on color { ColorAnimation { duration: 150 } }
 
@@ -665,7 +685,7 @@ ShellRoot {
                             z: -1 // Чтобы не перекрывать клики по отдельным точкам
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
-                                // Ищем активное окно, если нет - берем первое
+                                // Ищем актив окно, если нет - берем первое
                                 let targetId = modelData.windows[0].id
                                 for (let i = 0; i < modelData.windows.length; i++) {
                                     if (modelData.windows[i].is_focused) {
@@ -1193,6 +1213,232 @@ ShellRoot {
         Process { 
             id: clickProc
             running: false 
+        }
+
+        // --- ВСПЛЫВАЮЩЕЕ ОКНО: МЕНЮ ПИТАНИЯ ---
+        PopupWindow {
+            id: powerPopup
+            visible: false
+            color: "transparent"
+            implicitWidth: 320
+            implicitHeight: 280
+            
+            property double lastCloseTime: 0
+
+            anchor { 
+                item: archLogoContainer
+                edges: Edges.Right | Edges.Top
+                gravity: Edges.Right | Edges.Top 
+            }
+
+            MouseArea { 
+                anchors.fill: parent
+                onClicked: { 
+                    powerPopup.lastCloseTime = Date.now()
+                    powerPopup.visible = false 
+                } 
+            }
+
+            Rectangle {
+                id: powerRect
+                focus: true
+                
+                onActiveFocusChanged: { 
+                    if (!activeFocus && powerPopup.visible) { 
+                        powerPopup.lastCloseTime = Date.now()
+                        powerPopup.visible = false 
+                    } 
+                }
+
+                anchors.top: parent.top
+                anchors.left: parent.left
+                anchors.topMargin: 0
+                anchors.leftMargin: 10    
+
+                width: 280
+                height: 240
+                color: cfg.popupBgColor
+                border.color: cfg.inactiveColor
+                border.width: 1
+                radius: 4
+
+                MouseArea { 
+                    anchors.fill: parent 
+                }
+
+                Process {
+                    id: powerActionProc
+                    running: false
+                }
+
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.margins: 20
+                    spacing: 15
+
+                    // Заголовок и кнопка закрытия
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Item { Layout.fillWidth: true } // Распорка
+                        
+                        Text { 
+                            text: "SYSTEM POWER"
+                            color: cfg.existingColor
+                            font.pixelSize: 14
+                            font.bold: true
+                            font.family: "AurulentSansMNerdFontPropo"
+                        }
+                        
+                        Item { Layout.fillWidth: true } // Распорка
+                        
+                        Text { 
+                            text: "✖"
+                            color: cfg.inactiveColor
+                            font.pixelSize: 14
+                            font.bold: true
+                            
+                            MouseArea { 
+                                anchors.fill: parent
+                                anchors.margins: -10
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: { 
+                                    powerPopup.lastCloseTime = Date.now()
+                                    powerPopup.visible = false 
+                                } 
+                            }
+                        }
+                    }
+
+                    // Центральный блок с барами (CPU и RAM) - ГОРИЗОНТАЛЬНЫЙ ВИД
+                    Item {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+
+                        ColumnLayout {
+                            anchors.centerIn: parent
+                            spacing: 25 // Отступ между графиком CPU и RAM
+
+                            // CPU Row
+                            RowLayout {
+                                spacing: 15
+                                Text {
+                                    text: "󰘚"
+                                    color: cfg.accentColor
+                                    font.pixelSize: 24
+                                    Layout.alignment: Qt.AlignVCenter
+                                }
+                                Row {
+                                    spacing: 4
+                                    Layout.alignment: Qt.AlignVCenter
+                                    Repeater {
+                                        model: 10
+                                        Rectangle {
+                                            width: 10
+                                            height: 16
+                                            color: index < Math.round(sysData.cpuPercent / 10) ? cfg.accentColor : cfg.inactiveColor
+                                        }
+                                    }
+                                }
+                                Text {
+                                    text: sysData.cpuPercent + "%"
+                                    color: cfg.existingColor
+                                    font.pixelSize: 14
+                                    font.bold: true
+                                    font.family: "monospace"
+                                    Layout.alignment: Qt.AlignVCenter
+                                    Layout.preferredWidth: 35
+                                    horizontalAlignment: Text.AlignRight
+                                }
+                            }
+
+                            // RAM Row
+                            RowLayout {
+                                spacing: 15
+                                Text {
+                                    text: "󰍛"
+                                    color: cfg.accentColor
+                                    font.pixelSize: 24
+                                    Layout.alignment: Qt.AlignVCenter
+                                }
+                                Row {
+                                    spacing: 4
+                                    Layout.alignment: Qt.AlignVCenter
+                                    Repeater {
+                                        model: 10
+                                        Rectangle {
+                                            width: 10
+                                            height: 16
+                                            color: index < Math.round((sysData.ramBlocks / 24) * 10) ? cfg.accentColor : cfg.inactiveColor
+                                        }
+                                    }
+                                }
+                                Text {
+                                    text: Math.round((sysData.ramBlocks / 24) * 100) + "%"
+                                    color: cfg.existingColor
+                                    font.pixelSize: 14
+                                    font.bold: true
+                                    font.family: "monospace"
+                                    Layout.alignment: Qt.AlignVCenter
+                                    Layout.preferredWidth: 35
+                                    horizontalAlignment: Text.AlignRight
+                                }
+                            }
+                        }
+                    }
+
+                    // Круглые кнопки внизу
+                    RowLayout {
+                        Layout.alignment: Qt.AlignHCenter
+                        spacing: 20
+
+                        Repeater {
+                            model: [
+                                { icon: "󰤄", cmd: "systemctl suspend" },
+                                { icon: "󰑐", cmd: "systemctl reboot" },
+                                { icon: "󰐥", cmd: "systemctl poweroff" }
+                            ]
+                            delegate: Rectangle {
+                                width: 44
+                                height: 44
+                                radius: 22 // Делаем круг
+                                color: "transparent"
+                                border.width: 2
+                                border.color: btnMouse.containsMouse ? cfg.accentColor : cfg.inactiveColor
+                                
+                                Behavior on border.color { ColorAnimation { duration: 150 } }
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: modelData.icon
+                                    font.pixelSize: 20
+                                    color: btnMouse.containsMouse ? cfg.accentColor : cfg.inactiveColor
+                                    font.family: "AurulentSansMNerdFontPropo"
+                                    
+                                    Behavior on color { ColorAnimation { duration: 150 } }
+                                }
+
+                                MouseArea {
+                                    id: btnMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        powerActionProc.command = ["sh", "-c", modelData.cmd]
+                                        powerActionProc.running = true
+                                        powerPopup.visible = false
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            onVisibleChanged: { 
+                if (visible) { 
+                    powerRect.forceActiveFocus()
+                } 
+            }
         }
 
         // --- ВСПЛЫВАЮЩЕЕ ОКНО: WI-FI МЕНЮ ---
