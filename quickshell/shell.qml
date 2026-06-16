@@ -323,7 +323,7 @@ ShellRoot {
                 anchors.fill: parent
                 anchors.topMargin: 8
                 anchors.bottomMargin: 8
-                spacing: 10
+                spacing: 5
 
                 // --- ЛОГО / КНОПКА ПИТАНИЯ ---
                 Item {
@@ -425,6 +425,14 @@ ShellRoot {
                             onRead: data => {
                                 try {
                                     let event = JSON.parse(data)
+                                    // --- РАСКЛАДКА ---
+                                    if (event.KeyboardLayoutsChanged) {
+                                        layoutWidget.layouts = event.KeyboardLayoutsChanged.keyboard_layouts.names
+                                        layoutWidget.currentIndex = event.KeyboardLayoutsChanged.keyboard_layouts.current_idx
+                                    } else if (event.KeyboardLayoutSwitched) {
+                                        layoutWidget.currentIndex = event.KeyboardLayoutSwitched.idx
+                                    }
+                                    
                                     if (event.WorkspacesChanged) {
                                         workspacesLayout.updateWorkspaces(event.WorkspacesChanged.workspaces)
                                     } else if (event.WorkspaceActivated) {
@@ -728,7 +736,7 @@ ShellRoot {
 
                     ColumnLayout {
                         anchors.centerIn: parent
-                        spacing: 6
+                        spacing: 4
 
                         Text { 
                             text: sysData.netIcon
@@ -952,7 +960,7 @@ ShellRoot {
                 // --- БАТАРЕЯ (Телепортирована наверх и сделана баром) ---
                 ColumnLayout {
                     id: batteryWidget
-                    spacing: 6
+		    spacing: 2 
                     Layout.alignment: Qt.AlignHCenter
                     
                     property int capacity: 0
@@ -1039,6 +1047,74 @@ ShellRoot {
                             batProcess.running = false
                             batProcess.running = true 
                         } 
+                    }
+                }
+
+                // --- СЕПАРАТОР (Перед раскладкой) ---
+                Column {
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.topMargin: 2
+                    Layout.bottomMargin: 2
+                    spacing: 0
+                    
+                    Rectangle { 
+                        width: cfg.barWidth - 12
+                        height: 2
+                        color: cfg.sepColor 
+                    }
+                    Rectangle { 
+                        width: cfg.barWidth - 12
+                        height: 1
+                        color: cfg.sepLightColor 
+                    }
+                }
+
+                // --- ИНДИКАТОР РАСКЛАДКИ ---
+                Item {
+                    id: layoutWidget
+                    Layout.preferredWidth: cfg.barWidth
+                    Layout.preferredHeight: 20
+                    Layout.alignment: Qt.AlignHCenter
+                    
+                    property var layouts: []
+                    property int currentIndex: 0
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: layoutWidget.layouts.length > 0 ? (layoutWidget.layouts[layoutWidget.currentIndex].includes("Russian") ? "RU" : "EN") : "--"
+                        color: cfg.textColor
+                        font.pixelSize: 13
+                        font.bold: true
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            layoutActionProc.running = true
+                        }
+                    }
+
+                    Process {
+                        id: layoutProcess
+                        command: ["niri", "msg", "-j", "keyboard-layouts"]
+                        running: true
+                        stdout: SplitParser {
+                            onRead: data => {
+                                try {
+                                    let obj = JSON.parse(data)
+                                    layoutWidget.layouts = obj.names
+                                    layoutWidget.currentIndex = obj.current_idx
+                                    layoutProcess.running = false // Выключаем процесс после инициализации
+                                } catch(e) {}
+                            }
+                        }
+                    }
+                    
+                    Process {
+                        id: layoutActionProc
+                        command: ["niri", "msg", "action", "switch-layout"]
+                        running: false
                     }
                 }
 
@@ -1861,16 +1937,53 @@ ShellRoot {
         
         color: "transparent"
 
-        Item {
-            anchors.fill: parent
+            Item {
+                anchors.fill: parent
 
-            GridLayout {
-                anchors.verticalCenter: parent.verticalCenter
+            Column {
                 anchors.left: parent.left
-                anchors.leftMargin: cfg.barWidth + 40
-                columns: 2
-                columnSpacing: 60
-                rowSpacing: 40
+                anchors.leftMargin: cfg.barWidth + 100
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 40
+
+                Column {
+                    id: clockColumn
+                    spacing: 5
+                    anchors.horizontalCenter: parent.horizontalCenter
+
+                    Text {
+                        id: timeText
+                        text: Qt.formatDateTime(new Date(), "hh:mm")
+                        color: cfg.textColor
+                        font.pixelSize: 64
+                        font.bold: true
+                        font.family: "AurulentSansMNerdFontPropo"
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+                    Text {
+                        id: dateText
+                        text: Qt.formatDateTime(new Date(), "dddd, d MMMM")
+                        color: cfg.existingColor
+                        font.pixelSize: 24
+                        font.family: "AurulentSansMNerdFontPropo"
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+                    Timer {
+                        interval: 1000
+                        running: true
+                        repeat: true
+                        onTriggered: {
+                            timeText.text = Qt.formatDateTime(new Date(), "hh:mm")
+                            dateText.text = Qt.formatDateTime(new Date(), "dddd, d MMMM")
+                        }
+                    }
+                }
+
+                GridLayout {
+                    columns: 2
+                    columnSpacing: 60
+                    rowSpacing: 40
+                    anchors.horizontalCenter: parent.horizontalCenter
 
                 // 1. CPU WIDGET (Левая колонка)
                 RowLayout {
@@ -2425,4 +2538,5 @@ ShellRoot {
             }
         }
     }
+}
 }
