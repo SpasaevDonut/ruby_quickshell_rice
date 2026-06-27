@@ -12,3 +12,5 @@ A vibecoded rice trying to replicate worron's ruby dotfiles
 |widgets|quickshell|
 |launcher|rofi|
 |tty|kitty|
+
+otf-aurulent-nerd and ttf-jetbrains-mono-nerd are required
